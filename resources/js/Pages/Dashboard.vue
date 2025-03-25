@@ -157,7 +157,6 @@ export default {
 }
 
 .logout-btn {
-    position: absolute;
     top: 0;
     right: 0;
     height: 40px;
