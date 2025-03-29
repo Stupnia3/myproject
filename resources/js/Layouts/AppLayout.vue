@@ -1,7 +1,6 @@
-<!-- resources/js/Layouts/AppLayout.vue -->
 <template>
     <div class="layout">
-        <Header :auth="auth" />
+        <Header :auth="auth" :csrf_token="csrf_token" />
         <main class="content">
             <slot />
         </main>
@@ -11,6 +10,7 @@
 </template>
 
 <script>
+import { Head } from '@inertiajs/vue3';
 import Header from '../Components/Header.vue';
 import Footer from '../Components/Footer.vue';
 import Modal from '../Components/Modal.vue';
@@ -19,6 +19,10 @@ export default {
     components: { Header, Footer, Modal },
     props: {
         auth: Object,
+        csrf_token: String,
+    },
+    mounted() {
+        console.log('AppLayout props:', this.$props); // Проверяем, что приходит в пропсах
     },
 };
 </script>

@@ -1,61 +1,25 @@
 <?php
-// app/Http/Controllers/AuthController.php
 namespace App\Http\Controllers;
 
-use App\Models\Event;
-use App\Models\EventRegistration;
-use App\Models\User;
+use App\Models\{Event, EventRegistration, User};
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\{Auth, Log, DB};
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-    public function showLogin()
-    {
-        return Inertia::render('Login');
-    }
-
-    public function showRegister()
-    {
-        return Inertia::render('Register');
-    }
-
-    public function register(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-        ]);
-
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => bcrypt($request->password),
-        ]);
-
-        Auth::login($user);
-
-        return redirect('/dashboard');
-    }
+    private const DASHBOARD_PATH = '/dashboard';
+    private const HOME_PATH = '/';
 
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
-
-        if (Auth::attempt($credentials)) {
+        if (Auth::attempt($this->validateLogin($request))) {
             $request->session()->regenerate();
-            return redirect()->intended('/dashboard');
+            return Inertia::render('AdminPanel', [
+                'user' => fn() => Auth::user(), // Передаём user явно
+            ]);
         }
-
-        return back()->withErrors([
-            'email' => 'Неверные учетные данные',
-        ]);
+        return back()->withErrors(['email' => 'Неверные учетные данные']);
     }
 
     public function logout(Request $request)
@@ -63,36 +27,71 @@ class AuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect('/');
+
+        return Inertia::render('MainPage', [
+            'title' => 'Главная',
+            'csrf_token' => csrf_token(),
+        ]);
     }
+
+    public function register(Request $request)
+    {
+        $data = $this->validateRegistration($request);
+        $user = User::create([...$data, 'password' => bcrypt($data['password'])]);
+        Auth::login($user);
+        return redirect(self::DASHBOARD_PATH);
+    }
+
+    private function validateRegistration(Request $request): array
+    {
+        return $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+    }
+
+    private function validateLogin(Request $request): array
+    {
+        return $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required'],
+        ]);
+    }
+
+    public function showAuthForm(string $type)
+    {
+        $component = $type === 'login' ? 'Login' : 'Register';
+        return Inertia::render($component);
+    }
+
     public function showDashboard()
     {
         return Inertia::render('AdminPanel', [
-            'user' => Auth::user(),
+            'user' => fn() => Auth::user(),
         ]);
     }
 
     public function showAdminPanel(Request $request)
     {
-        $events = Event::all(['id', 'title']);
         $selectedEventId = $request->input('event_id');
-
-        \Log::info('Admin panel requested', [
-            'selectedEventId' => $selectedEventId,
-            'request_all' => $request->all(),
-        ]);
-
+        $events = Event::query()->select(['id', 'title'])->get();
         $registrations = $selectedEventId
-            ? EventRegistration::where('event_id', $selectedEventId)->get(['id', 'name', 'email', 'phone', 'created_at'])
-            : collect([]); // Используем коллекцию вместо массива
+            ? EventRegistration::query()
+                ->where('event_id', $selectedEventId)
+                ->select(['id', 'name', 'email', 'phone', 'created_at'])
+                ->get()
+            : collect();
 
-        \Log::info('Registrations fetched', [
-            'selectedEventId' => $selectedEventId,
-            'registrations' => $registrations->toArray(), // Теперь toArray() работает
-        ]);
+        if (config('app.debug')) {
+            Log::info('Admin panel data', [
+                'selectedEventId' => $selectedEventId,
+                'registrations_count' => $registrations->count(),
+            ]);
+        }
 
         return Inertia::render('Dashboard', [
-            'user' => Auth::user(),
+            'user' => fn() => Auth::user(),
             'events' => $events,
             'registrations' => $registrations,
             'selectedEventId' => $selectedEventId,
@@ -101,80 +100,53 @@ class AuthController extends Controller
 
     public function storeEvent(Request $request)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'practical_parts' => 'required|array|min:1',
-            'methodologies' => 'required|array|min:1',
-            'photo' => 'nullable|image|max:2048', // Максимум 2MB
-            'start_date' => 'required|date|after_or_equal:today',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-            'total_seats' => 'required|integer|min:1',
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['required', 'string'],
+            'practical_parts' => ['required', 'array', 'min:1'],
+            'methodologies' => ['required', 'array', 'min:1'],
+            'photo' => ['nullable', 'image', 'max:2048'],
+            'start_date' => ['required', 'date', 'after_or_equal:today'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'total_seats' => ['required', 'integer', 'min:1'],
         ]);
 
-        $photoPath = null;
-        if ($request->hasFile('photo')) {
-            $photoPath = $request->file('photo')->store('events', 'public');
-        }
+        $data['photo'] = $request->file('photo')?->store('events', 'public');
+        $data['occupied_seats'] = 0;
 
-        Event::create([
-            'title' => $request->title,
-            'description' => $request->description,
-            'practical_parts' => $request->practical_parts,
-            'methodologies' => $request->methodologies,
-            'photo' => $photoPath,
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
-            'total_seats' => $request->total_seats,
-            'occupied_seats' => 0,
-        ]);
+        Event::create($data);
 
         return redirect()->back()->with('success', 'Мероприятие успешно добавлено');
     }
+
     public function showEvents()
     {
-        $events = Event::all();
         return Inertia::render('EventsPage', [
-            'events' => $events,
-            'auth' => auth()->user() ? ['user' => auth()->user()] : ['user' => null],
+            'events' => fn() => Event::all(),
+            'auth' => ['user' => Auth::user()],
         ])->withViewData('layout', 'Layouts/AppLayout');
     }
 
     public function registerForEvent(Request $request, $eventId)
     {
-        file_put_contents(storage_path('logs/debug.log'), "registerForEvent called: " . json_encode([
-                'eventId' => $eventId,
-                'request' => $request->all(),
-                'auth' => Auth::check(),
-            ]) . PHP_EOL, FILE_APPEND);
-
         $event = Event::findOrFail($eventId);
-        if ($event->total_seats - $event->occupied_seats <= 0) {
-            file_put_contents(storage_path('logs/debug.log'), "No seats available: $eventId" . PHP_EOL, FILE_APPEND);
-            return redirect()->back()->withErrors(['message' => 'Нет свободных мест!']);
-        }
+        return DB::transaction(function () use ($request, $event) {
+            if ($event->available_seats <= 0) {
+                return redirect()->back()->withErrors(['message' => 'Нет свободных мест!']);
+            }
 
-        if (!Auth::check()) {
-            file_put_contents(storage_path('logs/debug.log'), "Processing non-authenticated user: " . json_encode($request->all()) . PHP_EOL, FILE_APPEND);
+            if (!Auth::check()) {
+                EventRegistration::create(
+                    $request->validate([
+                        'name' => ['required', 'string', 'max:255'],
+                        'email' => ['required', 'email', 'max:255'],
+                        'phone' => ['required', 'string', 'max:20'],
+                    ]) + ['event_id' => $event->id]
+                );
+            }
 
-            $data = $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|email|max:255',
-                'phone' => 'required|string|max:20',
-            ]);
-
-            EventRegistration::create([
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'phone' => $data['phone'],
-                'event_id' => $eventId,
-            ]);
-            file_put_contents(storage_path('logs/debug.log'), "Event registration saved: " . json_encode($data) . PHP_EOL, FILE_APPEND);
-        }
-
-        $event->update(['occupied_seats' => $event->occupied_seats + 1]);
-        file_put_contents(storage_path('logs/debug.log'), "Event seats updated: occupied_seats = " . $event->occupied_seats . PHP_EOL, FILE_APPEND);
-
-        return redirect()->back()->with('success', 'Вы успешно записаны на мероприятие!');
+            $event->increment('occupied_seats');
+            return redirect()->back()->with('success', 'Вы успешно записаны!');
+        });
     }
 }

@@ -1,9 +1,8 @@
-// resources/js/app.js
 import '../css/app.css';
 import './bootstrap'; // Только локальный bootstrap.js
 
 import { createApp, h } from 'vue';
-import { createInertiaApp } from '@inertiajs/vue3';
+import { createInertiaApp, router } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import AppLayout from './Layouts/AppLayout.vue';
 import AOS from 'aos';
@@ -18,6 +17,14 @@ AOS.init({
 });
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+
+// Обновляем CSRF-токен после каждого успешного запроса
+router.on('success', (event) => {
+    const newCsrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    if (newCsrfToken) {
+        window.axios.defaults.headers.common['X-CSRF-TOKEN'] = newCsrfToken;
+    }
+});
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,

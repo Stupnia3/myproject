@@ -11,18 +11,10 @@
                 <Link href="/admin" class="nav-item">панель администратора</Link>
             </li>
             <li>
-                <Link
-                    v-if="!isAuthenticated"
-                    href="/login"
-                    class="nav-item login"
-                >
+                <Link v-if="!isAuthenticated" href="/login" class="nav-item login">
                     вход
                 </Link>
-                <button
-                    v-else
-                    @click="logout"
-                    class="nav-item login logout"
-                >
+                <button v-else @click="logout" class="nav-item login logout">
                     выход
                 </button>
             </li>
@@ -41,6 +33,7 @@ export default {
     components: { Link },
     props: {
         auth: Object,
+        csrf_token: String,
     },
     computed: {
         isAuthenticated() {
@@ -50,13 +43,30 @@ export default {
             return this.auth?.user?.role === 'admin';
         },
     },
-    setup() {
+    setup(props) {
         const form = useForm({});
 
         function logout() {
+            if (!props.csrf_token) {
+                console.error('CSRF token not provided in props');
+                return;
+            }
+
             form.post('/logout', {
-                onSuccess: () => {
-                    // Редирект на сервере
+                preserveState: false,
+                headers: {
+                    'X-CSRF-TOKEN': props.csrf_token,
+                },
+                onSuccess: (page) => {
+                    const newToken = page.props.csrf_token;
+                    if (newToken) {
+                        document.querySelector('meta[name="csrf-token"]').setAttribute('content', newToken);
+                        window.axios.defaults.headers.common['X-CSRF-TOKEN'] = newToken;
+                    }
+                    console.log('Logout successful, page:', page);
+                },
+                onError: (errors) => {
+                    console.error('Logout failed:', errors);
                 },
             });
         }
