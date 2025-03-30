@@ -10,8 +10,8 @@ class AdminMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
-        if (!Auth::user()->isAdmin()) {
-            return redirect('/dashboard'); // Или abort(403)
+        if (!Auth::check() || Auth::user()->role !== 'admin') {
+            return redirect('/'); // Перенаправляем не-админов на главную страницу
         }
 
         return $next($request);

@@ -129,7 +129,8 @@ export default {
 }
 
 .dashboard-container {
-    width: 900px;
+    width: 100%;
+    max-width: 1577px;
     background: #ffffff;
     border-radius: 20px;
     overflow: hidden;

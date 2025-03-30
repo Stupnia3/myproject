@@ -8,7 +8,7 @@
                 </div>
                 <div class="form-section">
                     <h3 class="form-title">Регистрация</h3>
-                    <form @submit.prevent="submit" class="form">
+                    <form @submit.prevent="submit" class="form" enctype="multipart/form-data">
                         <div class="input-group">
                             <input
                                 v-model="form.name"
@@ -28,6 +28,23 @@
                                 :class="{ 'error': errors.email }"
                             />
                             <span v-if="errors.email" class="error-text">{{ errors.email }}</span>
+                        </div>
+                        <PhoneInput v-model="form.phone" :error="errors.phone" />
+                        <div class="input-group">
+                            <label for="photo" class="photo-label">Фото (необязательно)</label>
+                            <label for="photo" class="custom-file-upload">
+                                <i class="fas fa-camera"></i> Выбрать фото
+                            </label>
+                            <input
+                                id="photo"
+                                type="file"
+                                class="hidden-file-input"
+                                accept="image/*"
+                                @change="form.photo = $event.target.files[0]"
+                                :class="{ 'error': errors.photo }"
+                            />
+                            <span v-if="form.photo" class="file-name">{{ form.photo.name }}</span>
+                            <span v-if="errors.photo" class="error-text">{{ errors.photo }}</span>
                         </div>
                         <div class="input-group password-group">
                             <input
@@ -72,20 +89,24 @@
 
 <script>
 import { Link, useForm } from "@inertiajs/vue3";
+import PhoneInput from '../Components/PhoneInput.vue';
 
 export default {
-    components: { Link },
+    components: { Link, PhoneInput },
     setup() {
         const form = useForm({
             name: '',
             email: '',
+            phone: '',
+            photo: null,
             password: '',
             password_confirmation: '',
         });
 
         function submit() {
             form.post('/register', {
-                onSuccess: () => form.reset('password', 'password_confirmation'),
+                onSuccess: () => form.reset('password', 'password_confirmation', 'photo'),
+                forceFormData: true,
             });
         }
 
@@ -98,22 +119,12 @@ export default {
         };
     },
     props: {
-        errors: Object
-    }
-}
+        errors: Object,
+    },
+};
 </script>
 
 <style scoped>
-.error {
-    border-color: #dc2626;
-}
-
-.error-text {
-    color: #dc2626;
-    font-size: 14px;
-    margin-top: 5px;
-}
-
 .page {
     font-family: 'Montserrat Alternates', sans-serif;
     display: flex;
@@ -195,6 +206,55 @@ export default {
 .input:focus {
     outline: none;
     border-color: #1e40af;
+}
+
+.error {
+    border-color: #dc2626;
+}
+
+.error-text {
+    color: #dc2626;
+    font-size: 14px;
+    margin-top: 5px;
+}
+
+.photo-label {
+    display: block;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.custom-file-upload {
+    display: inline-flex;
+    align-items: center;
+    padding: 12px 20px;
+    background: #1e40af;
+    color: #ffffff;
+    border-radius: 25px !important;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s ease, transform 0.2s ease;
+    font-family: 'Montserrat Alternates', sans-serif;
+}
+
+.custom-file-upload:hover {
+    background: #1e3a8a;
+    transform: translateY(-2px);
+}
+
+.custom-file-upload i {
+    margin-right: 8px;
+}
+
+.hidden-file-input {
+    display: none; /* Скрываем стандартный input */
+}
+
+.file-name {
+    margin-top: 8px;
+    font-size: 14px;
+    color: #6b7280;
 }
 
 .buttons {

@@ -1,5 +1,5 @@
 import '../css/app.css';
-import './bootstrap'; // Только локальный bootstrap.js
+import './bootstrap';
 
 import { createApp, h } from 'vue';
 import { createInertiaApp, router } from '@inertiajs/vue3';
@@ -9,10 +9,10 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 import eventBus from './eventBus';
 
-// Инициализация AOS
 AOS.init({
-    duration: 800,
+    duration: 500,
     easing: 'ease-in-out',
+    once: true,
     mirror: false,
 });
 
@@ -20,9 +20,11 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 // Обновляем CSRF-токен после каждого успешного запроса
 router.on('success', (event) => {
-    const newCsrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    const newCsrfToken = event.detail.page.props.csrf_token || document.querySelector('meta[name="csrf-token"]')?.content;
     if (newCsrfToken) {
         window.axios.defaults.headers.common['X-CSRF-TOKEN'] = newCsrfToken;
+        // Сохраняем токен в глобальной переменной, если нужно
+        window.csrf_token = newCsrfToken;
     }
 });
 

@@ -1,10 +1,17 @@
 <!-- resources/js/components/EventInfo.vue -->
 <template>
     <div class="info-section">
-        <button class="register-btn" @click="$emit('register')">записаться</button>
+        <button
+            class="register-btn"
+            @click="$emit('register')"
+            :disabled="event.available_seats <= 0"
+            :class="{ 'disabled': event.available_seats <= 0 }"
+        >
+            {{ event.available_seats > 0 ? 'Записаться' : 'Мест нет' }}
+        </button>
         <div class="event-info">
             <p class="date">Дата: {{ formatDate(event.start_date, event.end_date) }}</p>
-            <p class="seats">Свободно мест: {{ event.total_seats - event.occupied_seats }}</p>
+            <p class="seats">Свободно мест: {{ event.available_seats }}</p>
         </div>
     </div>
 </template>
@@ -30,6 +37,15 @@ export default defineComponent({
             if (!end) return formatDatePart(start);
             return `${formatDatePart(start)} - ${formatDatePart(end)}`;
         },
+    },
+    mounted() {
+        console.log('Event data:', {
+            id: this.event.id,
+            title: this.event.title,
+            total_seats: this.event.total_seats,
+            occupied_seats: this.event.occupied_seats,
+            available_seats: this.event.available_seats,
+        });
     },
 });
 </script>

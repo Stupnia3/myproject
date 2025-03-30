@@ -39,7 +39,7 @@ export default {
 <style scoped>
 .about-section {
     position: relative;
-    padding: 60px 0;
+    padding: 0;
     overflow: visible;
 }
 
@@ -60,6 +60,7 @@ export default {
 }
 
 .image-section {
+    max-height: 900px;
     flex: 1;
     display: flex;
     justify-content: center;

@@ -1,10 +1,16 @@
 <!-- resources/js/components/EventImage.vue -->
 <template>
-    <div class="image-section" data-aos="fade-left">
-        <div class="image-wrapper" data-aos-delay="100">
-            <img :src="event.photo ? `/storage/${event.photo}` : '/storage/images/default-event.jpg'" alt="Event Image" class="image" loading="eager" data-aos-delay="300" />
+    <div class="image-section" >
+        <div class="image-wrapper" >
+            <img
+                :src="event.photo ? `/storage/${event.photo}` : '/storage/images/default-event.jpg'"
+                alt="Event Image"
+                class="image"
+                loading="eager"
+                data-aos-delay="300"
+            />
         </div>
-        <EventInfo :event="event" :auth="auth" @register="handleRegister" data-aos-delay="400" />
+        <EventInfo :event="event" :auth="auth" @register="handleRegister" />
     </div>
 </template>
 
@@ -20,9 +26,18 @@ export default {
         const form = useForm({});
 
         const handleRegister = () => {
-            console.log('handleRegister called, auth:', props.auth);
+            if (props.event.available_seats <= 0) {
+                eventBus.emit('openModal', {
+                    title: 'Нет мест',
+                    message: 'К сожалению, все места на это мероприятие заняты.',
+                    buttons: [
+                        { label: '', class: 'close-btn', action: () => eventBus.emit('closeModal') },
+                    ],
+                });
+                return;
+            }
+
             if (props.auth?.user) {
-                console.log('User is authenticated, event ID:', props.event.id);
                 eventBus.emit('openModal', {
                     title: 'Подтверждение записи',
                     message: 'Вы точно хотите записаться?',
@@ -31,25 +46,26 @@ export default {
                             label: 'Да',
                             class: 'confirm-btn',
                             action: () => {
-                                console.log('Sending POST to /event/' + props.event.id + '/register');
                                 form.post(`/event/${props.event.id}/register`, {
+                                    headers: {
+                                        'X-CSRF-TOKEN': window.csrf_token || document.querySelector('meta[name="csrf-token"]')?.content,
+                                    },
                                     onSuccess: () => {
-                                        console.log('Registration successful');
                                         eventBus.emit('openModal', {
                                             title: 'Успех',
                                             message: 'Вы успешно записаны!',
                                             buttons: [
-                                                { label: 'Закрыть', class: 'close-btn', action: () => eventBus.emit('closeModal') },
+                                                { label: '', class: 'close-btn', action: () => eventBus.emit('closeModal') },
                                             ],
                                         });
                                     },
                                     onError: (errors) => {
-                                        console.log('Registration failed:', errors);
+                                        console.error('Registration error:', errors);
                                         eventBus.emit('openModal', {
                                             title: 'Ошибка',
                                             message: errors.message || 'Произошла ошибка при записи.',
                                             buttons: [
-                                                { label: 'Закрыть', class: 'close-btn', action: () => eventBus.emit('closeModal') },
+                                                { label: '', class: 'close-btn', action: () => eventBus.emit('closeModal') },
                                             ],
                                         });
                                     },
@@ -60,13 +76,17 @@ export default {
                     ],
                 });
             } else {
-                console.log('User is not authenticated');
                 eventBus.emit('openModal', {
                     title: 'Требуется регистрация',
-                    message: 'Зарегистрируйтесь, чтобы быстро записываться на мероприятия!',
+                    message: 'Зарегистрируйтесь или заполните форму для записи!',
                     buttons: [
                         { label: 'Регистрация', class: 'register-btn', action: () => window.location.href = '/register' },
-                        { label: 'Отказаться', class: 'cancel-btn', action: () => window.location.href = `/event/${props.event.id}/register-form` },
+                        {
+                            label: 'Заполнить форму',
+                            class: 'form-btn',
+                            action: () => window.location.href = `/event/${props.event.id}/register-form`
+                        },
+                        { label: 'Отмена', class: 'cancel-btn', action: () => eventBus.emit('closeModal') },
                     ],
                 });
             }
@@ -125,6 +145,19 @@ export default {
     .image-wrapper {
         width: 250px;
         height: 250px;
+    }
+}
+
+/* Для сеточного режима */
+.event-section.grid-view .image-wrapper {
+    width: 100%;
+    height: 200px; /* Уменьшенная высота для сетки */
+    border-radius: 30px;
+}
+
+@media (max-width: 768px) {
+    .event-section.grid-view .image-wrapper {
+        height: 150px; /* Ещё меньше для маленьких экранов */
     }
 }
 </style>

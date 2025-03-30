@@ -1,21 +1,23 @@
 <!-- resources/js/components/EventText.vue -->
 <template>
-    <div class="text-section" data-aos="fade-right">
-        <h2 class="title" data-aos-delay="300">{{ event.title }}</h2>
-        <div class="description" data-aos-delay="700">
-            <p data-aos-delay="700">{{ event.description }}</p>
-            <div class="list-section">
+    <div class="text-section">
+        <h2 class="title" >{{ event.title }}</h2>
+        <div class="description" >
+            <p>
+                {{ viewMode === 'grid' ? truncateDescription(event.description, 100) : event.description }}
+            </p>
+            <div v-if="viewMode !== 'grid'" class="list-section">
                 <h3>Практическая часть:</h3>
                 <ul class="custom-list">
-                    <li v-for="(part, index) in event.practical_parts" :key="index" data-aos-delay="800">
+                    <li v-for="(part, index) in event.practical_parts" :key="index">
                         {{ part }}
                     </li>
                 </ul>
             </div>
-            <div class="list-section">
+            <div v-if="viewMode !== 'grid'" class="list-section">
                 <h3>Методики:</h3>
                 <ul class="custom-list">
-                    <li v-for="(method, index) in event.methodologies" :key="index" data-aos-delay="900">
+                    <li v-for="(method, index) in event.methodologies" :key="index" >
                         {{ method }}
                     </li>
                 </ul>
@@ -28,6 +30,14 @@
 export default {
     props: {
         event: Object,
+        auth: Object,
+        viewMode: String, // Новый проп для режима отображения
+    },
+    methods: {
+        truncateDescription(text, length) {
+            if (text.length <= length) return text;
+            return text.substring(0, length) + '...';
+        },
     },
 };
 </script>
@@ -45,6 +55,12 @@ export default {
     margin-bottom: 20px;
     color: #1e40af;
     text-transform: uppercase;
+}
+
+.grid-mode .title{
+    font-size: 20px;
+    height: 48px;
+    overflow: hidden;
 }
 
 .description {
@@ -97,5 +113,14 @@ export default {
     .description {
         font-size: 16px;
     }
+}
+
+/* Для сеточного режима */
+.text-section.grid-view .title {
+    font-size: 24px; /* Уменьшенный заголовок */
+}
+
+.text-section.grid-view .description {
+    font-size: 14px; /* Уменьшенный текст */
 }
 </style>

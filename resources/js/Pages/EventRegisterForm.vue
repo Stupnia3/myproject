@@ -1,4 +1,3 @@
-<!-- resources/js/Pages/EventRegisterForm.vue -->
 <template>
     <div class="page">
         <main class="content">
@@ -9,48 +8,19 @@
                 <div class="form-section">
                     <h3 class="form-title">Запись на мероприятие</h3>
                     <form @submit.prevent="submit" class="form">
-                        <div class="input-group">
-                            <input
-                                v-model="form.name"
-                                type="text"
-                                class="input"
-                                placeholder="Имя"
-                                :class="{ 'error': errors.name }"
-                            />
+                        <div v-if="!auth.user" class="input-group">
+                            <input v-model="form.name" type="text" class="input" placeholder="Имя" :class="{ 'error': errors.name }"/>
                             <span v-if="errors.name" class="error-text">{{ errors.name }}</span>
                         </div>
-                        <div class="input-group">
-                            <input
-                                v-model="form.email"
-                                type="email"
-                                class="input"
-                                placeholder="Почта"
-                                :class="{ 'error': errors.email }"
-                            />
+                        <div v-if="!auth.user" class="input-group">
+                            <input v-model="form.email" type="email" class="input" placeholder="Почта" :class="{ 'error': errors.email }"/>
                             <span v-if="errors.email" class="error-text">{{ errors.email }}</span>
                         </div>
+                        <PhoneInput v-model="form.phone" :error="errors.phone" />
                         <div class="input-group">
-                            <input
-                                v-model="form.phone"
-                                type="tel"
-                                class="input"
-                                placeholder="Номер телефона"
-                                :class="{ 'error': errors.phone }"
-                            />
-                            <span v-if="errors.phone" class="error-text">{{ errors.phone }}</span>
-                        </div>
-                        <div class="input-group">
-                            <select
-                                v-model="form.event_id"
-                                class="input"
-                                :class="{ 'error': errors.event_id }"
-                            >
+                            <select v-model="form.event_id" class="input" :class="{ 'error': errors.event_id }">
                                 <option value="" disabled>Выберите мероприятие</option>
-                                <option
-                                    v-for="event in events"
-                                    :key="event.id"
-                                    :value="event.id"
-                                >
+                                <option v-for="event in events" :key="event.id" :value="event.id">
                                     {{ event.title }}
                                 </option>
                             </select>
@@ -61,7 +31,7 @@
                                 Записаться
                             </button>
                             <button type="button" class="btn secondary" @click="$inertia.get('/events')">
-                                <Link href="/events">Вернуться к мероприятиям</Link>
+                                <Link href="/events">Назад</Link>
                             </button>
                         </div>
                     </form>
@@ -71,18 +41,23 @@
     </div>
 </template>
 
-<!-- resources/js/Pages/EventRegisterForm.vue (фрагмент) -->
 <script>
 import { Link, useForm } from '@inertiajs/vue3';
+import PhoneInput from '../Components/PhoneInput.vue';
 
 export default {
-    components: { Link },
-    props: { events: Array, eventId: Number, errors: Object },
+    components: { Link, PhoneInput },
+    props: {
+        events: Array,
+        eventId: Number,
+        errors: Object,
+        auth: Object
+    },
     setup(props) {
         const form = useForm({
-            name: '',
-            email: '',
-            phone: '',
+            name: props.auth.user?.name || '',
+            email: props.auth.user?.email || '',
+            phone: props.auth.user?.phone || '',
             event_id: props.eventId || '',
         });
 
@@ -91,11 +66,10 @@ export default {
                 console.error('Event ID is missing');
                 return;
             }
-            console.log('Submitting form with data:', form.data());
+
             form.post(`/event/${form.event_id}/register`, {
                 preserveState: true,
                 onSuccess: () => {
-                    console.log('Form submitted successfully');
                     form.reset('name', 'email', 'phone', 'event_id');
                 },
                 onError: (errors) => {

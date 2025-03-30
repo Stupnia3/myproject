@@ -119,8 +119,9 @@ export default {
 <style scoped>
 .admin-panel {
     padding: 40px;
-    max-width: 900px;
     margin: 0 auto;
+    max-width: 1577px;
+    width: 100%;
     font-family: 'Montserrat Alternates', sans-serif;
 }
 

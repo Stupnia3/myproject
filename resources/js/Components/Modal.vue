@@ -85,8 +85,8 @@ export default {
     border-radius: 15px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     width: 400px; /* Фиксированная ширина */
-    min-height: 200px; /* Минимальная высота */
-    height: fit-content;
+    //min-height: 200px; /* Минимальная высота */
+    max-height: fit-content;
     text-align: center;
     font-family: 'Montserrat Alternates', sans-serif;
     position: relative;
@@ -170,6 +170,13 @@ export default {
     font-size: 24px;
     color: #dc2626;
     cursor: pointer;
+}
+.confirm-btn, .form-btn{
+    background-color: #85ff0c;
+}
+.confirm-btn:hover, .form-btn:hover {
+    background: #5eb00b;
+    transform: translateY(-2px);
 }
 
 @media (max-width: 768px) {

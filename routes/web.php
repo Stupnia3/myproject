@@ -14,7 +14,7 @@ Route::controller(AuthController::class)->group(function () {
     Route::get('/about', fn() => Inertia::render('About', ['title' => 'О нас']))->name('about');
     Route::get('/events', 'showEvents')->name('events');
 
-    // Авторизация
+    // Авторизация (доступны всем)
     Route::get('/login', 'showAuthForm')->name('login')->defaults('type', 'login');
     Route::post('/login', 'login');
     Route::get('/register', 'showAuthForm')->name('register')->defaults('type', 'register');
@@ -26,7 +26,8 @@ Route::controller(AuthController::class)->group(function () {
             'eventId' => (int)$id,
         ]);
     })->name('event.register.form');
-    // Мероприятия
+
+    // Мероприятия (доступны всем)
     Route::post('/event/{id}/register', 'registerForEvent')->name('event.register');
 });
 
@@ -34,7 +35,7 @@ Route::controller(AuthController::class)->group(function () {
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [AuthController::class, 'showDashboard'])->name('dashboard');
-
+    // Только для админов
     Route::middleware('admin')->prefix('admin')->group(function () {
         Route::get('/', [AuthController::class, 'showAdminPanel'])->name('admin');
         Route::post('/events', [AuthController::class, 'storeEvent'])->name('admin.events.store');
