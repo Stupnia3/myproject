@@ -1,16 +1,30 @@
+<!-- resources/js/components/ReviewsSection.vue -->
 <template>
     <section class="reviews-section">
         <h2 class="section-title">отзывы</h2>
         <div class="review-carousel">
-            <div class="review-card">
+            <div v-if="reviews && reviews.length > 0" class="review-card">
                 <img :src="reviews[currentReview].image" :alt="reviews[currentReview].author" class="review-image" />
                 <div class="review-content">
                     <h3 class="review-author">{{ reviews[currentReview].author }}</h3>
+                    <div class="star-rating">
+                        <span
+                            v-for="star in 5"
+                            :key="star"
+                            class="star"
+                            :class="{ filled: star <= reviews[currentReview].rating }"
+                        >
+                            ★
+                        </span>
+                    </div>
                     <p class="review-text">{{ reviews[currentReview].text }}</p>
                 </div>
             </div>
+            <div v-else class="no-reviews">
+                <p>Пока нет отзывов. Будьте первым!</p>
+            </div>
         </div>
-        <div class="carousel-controls">
+        <div v-if="reviews && reviews.length > 1" class="carousel-controls">
             <button class="arrow arrow-left" @click="prevReview">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M15 18L9 12L15 6" stroke="#1e40af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -27,35 +41,45 @@
 
 <script>
 export default {
+    props: {
+        reviews: Array,
+    },
     data() {
         return {
             currentReview: 0,
-            reviews: [
-                {
-                    image: '/storage/images/review1.jpg',
-                    author: 'Алина Складчикова',
-                    text: 'Текст отзыва, который оставил человек, проходивший мастер-класс. Это было невероятное путешествие в мир эмоций!',
-                },
-                {
-                    image: '/storage/images/avatardefault.png',
-                    author: 'Иван Петров',
-                    text: 'Арт-терапия помогла мне справиться со стрессом. Спасибо за тёплую атмосферу!',
-                },
-                {
-                    image: '/storage/images/avatardefault.png',
-                    author: 'Мария Иванова',
-                    text: 'Мастер-класс был потрясающим! Я открыла для себя новые способы самовыражения.',
-                },
-            ],
+            autoSlideInterval: null,
         };
     },
     methods: {
         nextReview() {
-            this.currentReview = (this.currentReview + 1) % this.reviews.length;
+            if (this.reviews && this.reviews.length > 0) {
+                this.currentReview = (this.currentReview + 1) % this.reviews.length;
+            }
         },
         prevReview() {
-            this.currentReview = (this.currentReview - 1 + this.reviews.length) % this.reviews.length;
+            if (this.reviews && this.reviews.length > 0) {
+                this.currentReview = (this.currentReview - 1 + this.reviews.length) % this.reviews.length;
+            }
         },
+        startAutoSlide() {
+            if (this.reviews && this.reviews.length > 1) {
+                this.autoSlideInterval = setInterval(() => {
+                    this.nextReview();
+                }, 5000);
+            }
+        },
+        stopAutoSlide() {
+            if (this.autoSlideInterval) {
+                clearInterval(this.autoSlideInterval);
+                this.autoSlideInterval = null;
+            }
+        },
+    },
+    mounted() {
+        this.startAutoSlide();
+    },
+    beforeUnmount() {
+        this.stopAutoSlide();
     },
 };
 </script>
@@ -63,13 +87,13 @@ export default {
 <style scoped>
 .reviews-section {
     padding: 60px 20px;
-    background-color: #f5f5f5; /* Светлый фон, как в других секциях */
+    background-color: #f5f5f5;
     text-align: center;
 }
 
 .section-title {
-    font-size: 24px; /* Размер шрифта заголовка */
-    color: #1e40af; /* Синий цвет */
+    font-size: 24px;
+    color: #1e40af;
     text-transform: uppercase;
     margin-bottom: 40px;
 }
@@ -81,14 +105,15 @@ export default {
 }
 
 .review-card {
-    background-color: #fff; /* Белый фон карточки */
+    background-color: #fff;
     border-radius: 25px;
     padding: 20px;
-    width: 800px; /* Ширина карточки, как на изображении */
+    width: 800px;
     display: flex;
     align-items: center;
     gap: 20px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Лёгкая тень */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: opacity 0.3s ease;
 }
 
 .review-image {
@@ -100,26 +125,46 @@ export default {
 
 .review-content {
     text-align: left;
-    flex: 1; /* Занимает оставшееся пространство */
+    flex: 1;
 }
 
 .review-author {
-    font-size: 18px; /* Размер шрифта имени */
-    color: #1e40af; /* Синий цвет */
+    font-size: 18px;
+    color: #1e40af;
+    margin-bottom: 5px;
+}
+
+.star-rating {
+    display: flex;
+    gap: 5px;
+    font-size: 20px;
     margin-bottom: 10px;
 }
 
+.star {
+    color: #ccc;
+}
+
+.star.filled {
+    color: #f1c40f;
+}
+
 .review-text {
-    font-size: 16px; /* Размер шрифта текста */
+    font-size: 16px;
     color: #333;
-    line-height: 1.5; /* Увеличенный межстрочный интервал */
+    line-height: 1.5;
+}
+
+.no-reviews {
+    font-size: 16px;
+    color: #333;
 }
 
 .carousel-controls {
     margin-top: 20px;
     display: flex;
     justify-content: center;
-    gap: 20px; /* Отступ между стрелками */
+    gap: 20px;
 }
 
 .arrow {
@@ -131,7 +176,14 @@ export default {
 }
 
 .arrow:hover {
-    transform: scale(1.2); /* Увеличение при наведении */
+    transform: scale(1.2);
+}
+
+.debug-reviews {
+    background: #f0f0f0;
+    padding: 10px;
+    margin-bottom: 20px;
+    border-radius: 5px;
 }
 
 @media (max-width: 768px) {

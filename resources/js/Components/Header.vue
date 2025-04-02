@@ -1,12 +1,25 @@
 <template>
     <nav class="header" data-aos="fade-down">
-        <div class="logo"></div>
+        <div class="logo"><Link href="/" class="nav-item"><img src="/storage/images/art-therapy-logo.svg" alt="Logo" /></Link></div>
         <ul class="nav-links">
             <li><Link href="/about" class="nav-item">о нас</Link></li>
-            <li><Link href="/therapy" class="nav-item">терапия</Link></li>
+            <li>
+                <Link
+                    v-if="isAuthenticated"
+                    :href="route('reviews.create')"
+                    class="nav-item"
+                >
+                    отзывы
+                </Link>
+                <Link
+                    v-else
+                    href="/login"
+                    class="nav-item"
+                >
+                    отзывы
+                </Link>
+            </li>
             <li><Link href="/events" class="nav-item">мероприятия</Link></li>
-            <li><Link href="/retreat" class="nav-item">ретрит</Link></li>
-            <li><Link href="/contacts" class="nav-item">контакты</Link></li>
             <li v-if="isAuthenticated && isAdmin">
                 <Link href="/admin" class="nav-item">панель администратора</Link>
             </li>
@@ -101,9 +114,7 @@ export default {
 
 .logo {
     width: 55px;
-    height: 55px;
-    background: #ffffff;
-    border-radius: 50%;
+    height: 75px;
 }
 
 .nav-links {

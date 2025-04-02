@@ -1,7 +1,7 @@
 <template>
     <div>
         <AboutSection data-aos="fade-up" />
-        <ReviewsSection data-aos="fade-up" data-aos-delay="100" />
+        <ReviewsSection :reviews="reviews" data-aos="fade-up" data-aos-delay="100" />
         <ThoughtsSection data-aos="fade-up" data-aos-delay="200" />
         <TestSection data-aos="fade-up" data-aos-delay="300" />
     </div>
@@ -19,6 +19,9 @@ export default {
         ReviewsSection,
         ThoughtsSection,
         TestSection,
+    },
+    props: {
+        reviews: Array, // Теперь передаём массив всех отзывов
     },
 };
 </script>

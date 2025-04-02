@@ -1,17 +1,16 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReviewController;
 use App\Models\Event;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-
 Route::controller(AuthController::class)->group(function () {
     // Публичные маршруты
-    Route::get('/', fn() => Inertia::render('MainPage', ['title' => 'Главная']))->name('home');
-    Route::get('/about', fn() => Inertia::render('About', ['title' => 'О нас']))->name('about');
+    Route::get('/about', [HomeController::class, 'index'])->name('about'); // Используем HomeController
     Route::get('/events', 'showEvents')->name('events');
 
     // Авторизация (доступны всем)
@@ -30,6 +29,13 @@ Route::controller(AuthController::class)->group(function () {
     // Мероприятия (доступны всем)
     Route::post('/event/{id}/register', 'registerForEvent')->name('event.register');
 });
+
+// Главная страница с использованием HomeController
+Route::get('/', [HomeController::class, 'index'])->name('home');
+
+// Маршруты для отзывов
+Route::get('/add-review', [ReviewController::class, 'create'])->middleware('auth')->name('reviews.create');
+Route::post('/reviews', [ReviewController::class, 'store'])->middleware('auth')->name('reviews.store');
 
 // Авторизованные маршруты
 Route::middleware('auth')->group(function () {

@@ -4,6 +4,7 @@ import './bootstrap';
 import { createApp, h } from 'vue';
 import { createInertiaApp, router } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
+import { ZiggyVue } from 'ziggy-js'; // Импортируем ZiggyVue
 import AppLayout from './Layouts/AppLayout.vue';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
@@ -23,7 +24,6 @@ router.on('success', (event) => {
     const newCsrfToken = event.detail.page.props.csrf_token || document.querySelector('meta[name="csrf-token"]')?.content;
     if (newCsrfToken) {
         window.axios.defaults.headers.common['X-CSRF-TOKEN'] = newCsrfToken;
-        // Сохраняем токен в глобальной переменной, если нужно
         window.csrf_token = newCsrfToken;
     }
 });
@@ -42,7 +42,9 @@ createInertiaApp({
         const app = createApp({ render: () => h(App, props) });
 
         app.use(plugin);
+        app.use(ZiggyVue); // Подключаем ZiggyVue
         app.config.globalProperties.$eventBus = eventBus;
+        app.config.globalProperties.$route = route; // Делаем route() доступным глобально
 
         app.mount(el);
     },

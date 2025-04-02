@@ -189,7 +189,6 @@ export default {
 <style scoped>
 .test-section {
     padding: 60px 20px;
-    background-color: #f5f5f5;
     text-align: center;
 }
 
@@ -290,7 +289,7 @@ export default {
 .results-section {
     width: 100%;
     max-width: 1577px;
-    margin-top: 40px;
+    margin: 40px auto 0 auto;
     background-color: #1e40af;
     color: #fff;
     padding: 20px;

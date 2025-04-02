@@ -2,7 +2,7 @@
 <template>
     <div class="events-page">
         <HeaderSection />
-        <div class="view-toggle">
+        <div class="view-toggle ">
             <button
                 @click="toggleView"
                 class="toggle-btn"

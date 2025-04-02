@@ -20,6 +20,9 @@ export default {};
     padding: 60px 20px;
     background-color: var(--white);
     text-align: start;
+    width: 100%;
+    max-width: 1577px;
+    margin: 0 auto;
 }
 
 .section-title {

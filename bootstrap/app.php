@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
+            'auth' => \App\Http\Middleware\Authenticate::class, // Добавляем middleware auth
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
         ]);
     })
