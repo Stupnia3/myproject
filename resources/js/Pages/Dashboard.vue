@@ -8,6 +8,13 @@
                     <p class="welcome-text">Добро пожаловать, {{ user.name }}!</p>
                 </div>
 
+                <div class="button-group">
+                    <button v-if="user.role === 'admin'" class="btn add-event-btn">
+                        <Link href="/admin" class="nav-item">Добавить мероприятие</Link>
+                    </button>
+                    <button class="btn logout-btn" @click="logout">Выйти</button>
+                </div>
+
                 <div class="event-selector">
                     <label for="event-select" class="select-label">Выберите мероприятие:</label>
                     <select
@@ -22,26 +29,50 @@
                         </option>
                     </select>
                 </div>
-                <button class="btn logout-btn"><Link href="/dashboard" class="nav-item">Добавить мероприятие</Link></button>
 
                 <div v-if="registrations.length > 0" class="registrations-table">
                     <table>
                         <thead>
                         <tr>
-                            <th>ID</th>
                             <th>Имя</th>
                             <th>Email</th>
                             <th>Телефон</th>
                             <th>Дата записи</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
                         </tr>
                         </thead>
                         <tbody>
                         <tr v-for="registration in registrations" :key="registration.id">
-                            <td>{{ registration.id }}</td>
                             <td>{{ registration.name }}</td>
                             <td>{{ registration.email }}</td>
                             <td>{{ registration.phone }}</td>
                             <td>{{ formatDate(registration.created_at) }}</td>
+                            <td :class="statusClass(registration.status)">
+                                {{ statusText(registration.status) }}
+                            </td>
+                            <td>
+                                <button
+                                    class="action-btn confirm-btn"
+                                    :disabled="registration.status === 'confirmed'"
+                                    @click="confirmAction(registration.id, 'confirm')"
+                                >
+                                    Подтверждено
+                                </button>
+                                <button
+                                    class="action-btn reject-btn"
+                                    :disabled="registration.status === 'rejected'"
+                                    @click="confirmAction(registration.id, 'reject')"
+                                >
+                                    Отклонено
+                                </button>
+                                <button
+                                    class="action-btn delete-btn"
+                                    @click="confirmAction(registration.id, 'delete')"
+                                >
+                                    Удалить
+                                </button>
+                            </td>
                         </tr>
                         </tbody>
                     </table>
@@ -58,10 +89,10 @@
 </template>
 
 <script>
-import {Link, useForm} from '@inertiajs/vue3';
+import { Link, useForm } from '@inertiajs/vue3';
 
 export default {
-    components: {Link},
+    components: { Link },
     props: {
         user: Object,
         events: Array,
@@ -74,7 +105,9 @@ export default {
         };
     },
     setup() {
-        const form = useForm({});
+        const form = useForm({
+            status: null,
+        });
 
         function logout() {
             form.post('/logout', {
@@ -88,7 +121,7 @@ export default {
         fetchRegistrations() {
             if (this.selectedEvent) {
                 console.log('Fetching registrations for event:', this.selectedEvent);
-                this.form.get(`/admin?event_id=${this.selectedEvent}`, {
+                this.form.get(`/dashboard?event_id=${this.selectedEvent}`, {
                     preserveState: true,
                     preserveScroll: true,
                     replace: true,
@@ -108,12 +141,79 @@ export default {
                 day: 'numeric',
             });
         },
+        confirmAction(registrationId, action) {
+            const actions = {
+                confirm: {
+                    message: 'Вы уверены, что хотите подтвердить эту запись?',
+                    onConfirm: () => this.updateStatus(registrationId, 'confirmed'),
+                },
+                reject: {
+                    message: 'Вы уверены, что хотите отклонить эту запись?',
+                    onConfirm: () => this.updateStatus(registrationId, 'rejected'),
+                },
+                delete: {
+                    message: 'Вы уверены, что хотите удалить эту запись?',
+                    onConfirm: () => this.deleteRegistration(registrationId),
+                },
+            };
+
+            const { message, onConfirm } = actions[action];
+
+            if (confirm(message)) {
+                onConfirm();
+            }
+        },
+        updateStatus(registrationId, status) {
+            console.log('Updating status:', { registrationId, status });
+            this.form.status = status;
+            this.form.post(`/admin/registration/${registrationId}/status`, {}, {
+                preserveState: true,
+                preserveScroll: true,
+                onSuccess: () => {
+                    console.log('Status updated successfully');
+                    this.fetchRegistrations();
+                },
+                onError: (errors) => {
+                    console.log('Error updating status:', errors);
+                    alert(errors.status || 'Не удалось обновить статус записи.');
+                },
+            });
+        },
+        deleteRegistration(registrationId) {
+            console.log('Deleting registration:', registrationId);
+            this.form.delete(`/admin/registration/${registrationId}`, {
+                preserveState: true,
+                preserveScroll: true,
+                onSuccess: () => {
+                    console.log('Registration deleted successfully');
+                    this.fetchRegistrations();
+                },
+                onError: (errors) => {
+                    console.log('Error deleting registration:', errors);
+                    alert(errors.message || 'Не удалось удалить запись.');
+                },
+            });
+        },
+        statusText(status) {
+            const statuses = {
+                pending: 'Ожидает',
+                confirmed: 'Подтверждено',
+                rejected: 'Отклонено',
+            };
+            return statuses[status] || 'Неизвестно';
+        },
+        statusClass(status) {
+            return {
+                'status-pending': status === 'pending',
+                'status-confirmed': status === 'confirmed',
+                'status-rejected': status === 'rejected',
+            };
+        },
     },
 };
 </script>
 
 <style scoped>
-/* Стили остаются без изменений */
 .page {
     font-family: 'Montserrat Alternates', sans-serif;
     display: flex;
@@ -141,7 +241,6 @@ export default {
 .header-section {
     text-align: center;
     margin-bottom: 40px;
-    position: relative;
 }
 
 .dashboard-title {
@@ -157,9 +256,14 @@ export default {
     margin: 0;
 }
 
-.logout-btn {
-    top: 0;
-    right: 0;
+.button-group {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.add-event-btn, .logout-btn {
     height: 40px;
     padding: 0 20px;
     border-radius: 20px;
@@ -167,9 +271,22 @@ export default {
     font-weight: 600;
     cursor: pointer;
     transition: background 0.3s ease, transform 0.2s ease;
+    border: none;
+}
+
+.add-event-btn {
+    background: #1e40af;
+    color: #ffffff;
+}
+
+.add-event-btn:hover {
+    background: #1e3a8a;
+    transform: translateY(-2px);
+}
+
+.logout-btn {
     background: #dc2626;
     color: #ffffff;
-    border: none;
 }
 
 .logout-btn:hover {
@@ -236,5 +353,70 @@ tr:hover {
     color: #6b7280;
     font-size: 18px;
     margin-top: 20px;
+}
+
+.action-btn {
+    padding: 5px 10px;
+    margin: 0 5px;
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s ease, transform 0.2s ease;
+    border: none;
+}
+
+.confirm-btn {
+    background: #2d6a4f;
+    color: #ffffff;
+}
+
+.confirm-btn:hover {
+    background: #1a4d34;
+    transform: translateY(-2px);
+}
+
+.confirm-btn:disabled {
+    background: #a3bffa;
+    cursor: not-allowed;
+}
+
+.reject-btn {
+    background: #dc2626;
+    color: #ffffff;
+}
+
+.reject-btn:hover {
+    background: #b91c1c;
+    transform: translateY(-2px);
+}
+
+.reject-btn:disabled {
+    background: #a3bffa;
+    cursor: not-allowed;
+}
+
+.delete-btn {
+    background: #ef4444;
+    color: #ffffff;
+}
+
+.delete-btn:hover {
+    background: #dc2626;
+    transform: translateY(-2px);
+}
+
+.status-pending {
+    color: #6b7280;
+}
+
+.status-confirmed {
+    color: #2d6a4f;
+    font-weight: bold;
+}
+
+.status-rejected {
+    color: #dc2626;
+    font-weight: bold;
 }
 </style>

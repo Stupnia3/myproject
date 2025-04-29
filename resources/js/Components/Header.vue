@@ -21,7 +21,7 @@
             </li>
             <li><Link href="/events" class="nav-item">мероприятия</Link></li>
             <li v-if="isAuthenticated && isAdmin">
-                <Link href="/admin" class="nav-item">панель администратора</Link>
+                <Link href="/dashboard" class="nav-item">панель администратора</Link>
             </li>
             <li>
                 <Link v-if="!isAuthenticated" href="/login" class="nav-item login">

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class EventRegistration extends Model
 {
-    protected $fillable = ['name', 'email', 'phone', 'event_id', 'user_id'];
+    protected $fillable = ['name', 'email', 'phone', 'event_id', 'user_id', 'status'];
 
     public function event()
     {

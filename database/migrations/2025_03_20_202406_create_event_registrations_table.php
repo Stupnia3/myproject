@@ -14,6 +14,8 @@ return new class extends Migration
             $table->string('email');
             $table->string('phone');
             $table->foreignId('event_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade'); // Добавляем user_id
+            $table->string('status')->default('pending'); // Новое поле status: pending, confirmed, rejected
             $table->timestamps();
         });
     }

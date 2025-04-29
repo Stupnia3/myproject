@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Models\{Event, EventRegistration, User};
+use App\Models\{Event, EventRegistration, Teacher, User};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, Log, DB};
 use Inertia\Inertia;
@@ -9,6 +9,7 @@ use Inertia\Inertia;
 class AuthController extends Controller
 {
     private const DASHBOARD_PATH = '/dashboard';
+    private const EVENTS_PATH = '/events';
     private const HOME_PATH = '/';
 
     public function login(Request $request)
@@ -17,20 +18,12 @@ class AuthController extends Controller
             $request->session()->regenerate();
             $user = Auth::user();
 
-            // Проверяем роль пользователя
+            // Перенаправляем в зависимости от роли
             if ($user->role === 'admin') {
-                return Inertia::render('AdminPanel', [
-                    'user' => fn() => $user,
-                    'csrf_token' => csrf_token(),
-                ]);
+                return redirect(self::DASHBOARD_PATH);
+            } else {
+                return redirect(self::EVENTS_PATH);
             }
-
-            // Для обычных пользователей перенаправляем на главную страницу
-            return Inertia::render('MainPage', [
-                'title' => 'Главная',
-                'user' => fn() => $user,
-                'csrf_token' => csrf_token(),
-            ]);
         }
         return back()->withErrors(['email' => 'Неверные учетные данные']);
     }
@@ -41,10 +34,7 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return Inertia::render('MainPage', [
-            'title' => 'Главная',
-            'csrf_token' => csrf_token(),
-        ]);
+        return redirect(self::HOME_PATH);
     }
 
     public function register(Request $request)
@@ -61,8 +51,12 @@ class AuthController extends Controller
         $user = User::create($data);
         Auth::login($user);
 
-        // После регистрации перенаправляем в зависимости от роли
-        return redirect($user->role === 'admin' ? self::DASHBOARD_PATH : self::HOME_PATH);
+        // Перенаправляем в зависимости от роли
+        if ($user->role === 'admin') {
+            return redirect(self::DASHBOARD_PATH);
+        } else {
+            return redirect(self::EVENTS_PATH);
+        }
     }
 
     private function validateRegistration(Request $request): array
@@ -71,7 +65,7 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'phone' => ['required', 'string', 'regex:/^\+7 \(\d{3}\)-\d{3}-\d{2}-\d{2}$/'],
-            'photo' => ['nullable', 'image', 'max:2048'], // Максимум 2MB
+            'photo' => ['nullable', 'image', 'max:2048'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
     }
@@ -90,30 +84,19 @@ class AuthController extends Controller
         return Inertia::render($component);
     }
 
-    public function showDashboard()
-    {
-        $user = Auth::user();
-        if ($user->role === 'admin') {
-            return Inertia::render('AdminPanel', [
-                'user' => fn() => $user,
-            ]);
-        }
-        return redirect(self::HOME_PATH); // Обычных пользователей перенаправляем на главную
-    }
-
-    public function showAdminPanel(Request $request)
+    public function showDashboard(Request $request)
     {
         $selectedEventId = $request->input('event_id');
         $events = Event::query()->select(['id', 'title'])->get();
         $registrations = $selectedEventId
             ? EventRegistration::query()
                 ->where('event_id', $selectedEventId)
-                ->select(['id', 'name', 'email', 'phone', 'created_at'])
+                ->select(['id', 'name', 'email', 'phone', 'created_at', 'status'])
                 ->get()
             : collect();
 
         if (config('app.debug')) {
-            Log::info('Admin panel data', [
+            Log::info('Dashboard data', [
                 'selectedEventId' => $selectedEventId,
                 'registrations_count' => $registrations->count(),
             ]);
@@ -127,25 +110,124 @@ class AuthController extends Controller
         ]);
     }
 
+    public function showAdminPanel(Request $request)
+    {
+        $teachers = Teacher::select(['id', 'name'])->get();
+
+        if (config('app.debug')) {
+            Log::info('AdminPanel data', [
+                'teachers' => $teachers->toArray(),
+            ]);
+        }
+
+        return Inertia::render('AdminPanel', [
+            'user' => fn() => Auth::user(),
+            'teachers' => $teachers,
+        ]);
+    }
+
+    public function updateRegistrationStatus(Request $request, $registrationId)
+    {
+        Log::info('Received request to update registration status', [
+            'registration_id' => $registrationId,
+            'request_data' => $request->all(),
+        ]);
+
+        $validated = $request->validate([
+            'status' => ['required', 'in:confirmed,rejected'],
+        ]);
+
+        try {
+            $registration = EventRegistration::findOrFail($registrationId);
+            $updated = $registration->update(['status' => $validated['status']]);
+
+            if ($updated) {
+                Log::info('Registration status updated successfully', [
+                    'registration_id' => $registrationId,
+                    'status' => $validated['status'],
+                ]);
+            } else {
+                Log::error('Failed to update registration status', [
+                    'registration_id' => $registrationId,
+                    'status' => $validated['status'],
+                ]);
+                return redirect()->back()->withErrors(['status' => 'Не удалось обновить статус записи']);
+            }
+        } catch (\Exception $e) {
+            Log::error('Exception while updating registration status', [
+                'registration_id' => $registrationId,
+                'error' => $e->getMessage(),
+            ]);
+            return redirect()->back()->withErrors(['status' => 'Произошла ошибка: ' . $e->getMessage()]);
+        }
+
+        return redirect()->back()->with('success', 'Статус записи обновлен');
+    }
+
+    public function deleteRegistration($registrationId)
+    {
+        $registration = EventRegistration::findOrFail($registrationId);
+        $event = $registration->event;
+
+        if ($event && $event->occupied_seats > 0) {
+            $event->decrement('occupied_seats');
+        }
+
+        $registration->delete();
+
+        Log::info('Registration deleted', [
+            'registration_id' => $registrationId,
+        ]);
+
+        return redirect()->back()->with('success', 'Запись удалена');
+    }
+
     public function storeEvent(Request $request)
     {
-        $data = $request->validate([
+        $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
             'practical_parts' => ['required', 'array', 'min:1'],
+            'practical_parts.*' => ['required', 'string'],
             'methodologies' => ['required', 'array', 'min:1'],
+            'methodologies.*' => ['required', 'string'],
+            'tags' => ['nullable', 'array'],
+            'tags.*' => ['in:art-therapy,master-class,retreat'],
+            'teachers' => ['nullable', 'array'],
+            'teachers.*' => ['exists:teachers,id'],
+            'location' => ['nullable', 'string', 'max:255'],
+            'duration' => ['nullable', 'integer', 'min:0'],
             'photo' => ['nullable', 'image', 'max:2048'],
-            'start_date' => ['required', 'date', 'after_or_equal:today'],
+            'start_date' => ['required', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'total_seats' => ['required', 'integer', 'min:1'],
         ]);
 
-        $data['photo'] = $request->file('photo')?->store('events', 'public');
-        $data['occupied_seats'] = 0;
+        $photoPath = null;
+        if ($request->hasFile('photo')) {
+            $photoPath = $request->file('photo')->store('events', 'public');
+        }
 
-        Event::create($data);
+        $event = Event::create([
+            'title' => $validated['title'],
+            'description' => $validated['description'],
+            'practical_parts' => $validated['practical_parts'],
+            'methodologies' => $validated['methodologies'],
+            'tags' => $validated['tags'] ?? [],
+            'location' => $validated['location'],
+            'duration' => $validated['duration'],
+            'photo' => $photoPath,
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'],
+            'total_seats' => $validated['total_seats'],
+            'occupied_seats' => 0,
+        ]);
 
-        return redirect()->back()->with('success', 'Мероприятие успешно добавлено');
+        if (!empty($validated['teachers'])) {
+            $event->teachers()->sync($validated['teachers']);
+        }
+
+        return redirect()->back()->with('success', 'Мероприятие успешно добавлено!');
     }
 
     public function showEvents()
@@ -172,7 +254,7 @@ class AuthController extends Controller
                 'end_date' => $event->end_date,
                 'total_seats' => $event->total_seats,
                 'occupied_seats' => $event->occupied_seats,
-                'available_seats' => max(0, $availableSeats), // Гарантируем, что не будет отрицательных значений
+                'available_seats' => max(0, $availableSeats),
             ];
         });
 
@@ -208,7 +290,7 @@ class AuthController extends Controller
                     'user_id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'phone' => $user->phone ?? '', // Используем телефон из профиля
+                    'phone' => $user->phone ?? '',
                 ]);
             } else {
                 $registrationData = array_merge($registrationData, $request->validate([
@@ -228,5 +310,75 @@ class AuthController extends Controller
 
             return redirect()->back()->with('success', 'Вы успешно записаны!');
         });
+    }
+
+    public function showEventDetails($id)
+    {
+        $event = Event::with('teachers')->findOrFail($id);
+
+        $availableSeats = $event->total_seats - $event->occupied_seats;
+
+        if (config('app.debug')) {
+            Log::info('Event details data', [
+                'id' => $event->id,
+                'title' => $event->title,
+                'total_seats' => $event->total_seats,
+                'occupied_seats' => $event->occupied_seats,
+                'available_seats' => $availableSeats,
+            ]);
+        }
+
+        return Inertia::render('EventDetails', [
+            'event' => [
+                'id' => $event->id,
+                'title' => $event->title,
+                'description' => $event->description,
+                'practical_parts' => $event->practical_parts,
+                'methodologies' => $event->methodologies,
+                'photo' => $event->photo,
+                'start_date' => $event->start_date,
+                'end_date' => $event->end_date,
+                'location' => $event->location,
+                'duration' => $event->duration,
+                'total_seats' => $event->total_seats,
+                'occupied_seats' => $event->occupied_seats,
+                'available_seats' => max(0, $availableSeats),
+                'teachers' => $event->teachers->map(fn($teacher) => [
+                    'id' => $teacher->id,
+                    'name' => $teacher->name,
+                ]),
+            ],
+            'auth' => ['user' => Auth::user()],
+        ]);
+    }
+
+    public function storeTeacher(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'bio' => ['nullable', 'string'],
+            'photo' => ['nullable', 'image', 'max:2048'],
+        ]);
+
+        $photoPath = null;
+        if ($request->hasFile('photo')) {
+            $photoPath = $request->file('photo')->store('teachers', 'public');
+        }
+
+        Teacher::create([
+            'name' => $validated['name'],
+            'bio' => $validated['bio'],
+            'photo' => $photoPath,
+        ]);
+
+        return redirect()->back()->with('success', 'Преподаватель успешно добавлен!');
+    }
+
+    public function deleteTeacher($id)
+    {
+        $teacher = Teacher::findOrFail($id);
+        $teacher->delete();
+
+        return redirect()->back()->with('success', 'Преподаватель успешно удален!');
     }
 }
