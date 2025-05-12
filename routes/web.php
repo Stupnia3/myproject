@@ -32,12 +32,23 @@ Route::controller(AuthController::class)->group(function () {
 // Главная страница
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
-// Маршруты для отзывов
-Route::get('/add-review', [ReviewController::class, 'create'])->middleware('auth')->name('reviews.create');
-Route::post('/reviews', [ReviewController::class, 'store'])->middleware('auth')->name('reviews.store');
+//// Маршруты для отзывов
+//Route::get('/add-review', [ReviewController::class, 'create'])->middleware('auth')->name('reviews.create');
+//Route::post('/reviews', [ReviewController::class, 'store'])->middleware('auth')->name('reviews.store');
 
 // Авторизованные маршруты
 Route::middleware('auth')->group(function () {
+
+    Route::get('/add-review', [ReviewController::class, 'create'])->name('reviews.create');
+    Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
+    Route::get('/reviews/{eventId}', [ReviewController::class, 'index'])->name('reviews.index');
+
+    Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+    Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.update.avatar')->middleware('auth');
+
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // Панель администратора для управления записями

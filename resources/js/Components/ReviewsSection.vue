@@ -1,7 +1,6 @@
-<!-- resources/js/components/ReviewsSection.vue -->
 <template>
     <section class="reviews-section">
-        <h2 class="section-title">отзывы</h2>
+        <h2 class="section-title">Отзывы</h2>
         <div class="review-carousel">
             <div v-if="reviews && reviews.length > 0" class="review-card">
                 <img :src="reviews[currentReview].image" :alt="reviews[currentReview].author" class="review-image" />
@@ -42,7 +41,10 @@
 <script>
 export default {
     props: {
-        reviews: Array,
+        reviews: {
+            type: Array,
+            default: () => [],
+        },
     },
     data() {
         return {
@@ -52,17 +54,17 @@ export default {
     },
     methods: {
         nextReview() {
-            if (this.reviews && this.reviews.length > 0) {
+            if (this.reviews.length > 0) {
                 this.currentReview = (this.currentReview + 1) % this.reviews.length;
             }
         },
         prevReview() {
-            if (this.reviews && this.reviews.length > 0) {
+            if (this.reviews.length > 0) {
                 this.currentReview = (this.currentReview - 1 + this.reviews.length) % this.reviews.length;
             }
         },
         startAutoSlide() {
-            if (this.reviews && this.reviews.length > 1) {
+            if (this.reviews.length > 1) {
                 this.autoSlideInterval = setInterval(() => {
                     this.nextReview();
                 }, 5000);
@@ -89,6 +91,7 @@ export default {
     padding: 60px 20px;
     background-color: #f5f5f5;
     text-align: center;
+    font-family: 'Montserrat Alternates', sans-serif;
 }
 
 .section-title {
@@ -121,6 +124,7 @@ export default {
     height: 100px;
     border-radius: 50%;
     object-fit: cover;
+    border: 2px solid #1e40af;
 }
 
 .review-content {
@@ -179,13 +183,6 @@ export default {
     transform: scale(1.2);
 }
 
-.debug-reviews {
-    background: #f0f0f0;
-    padding: 10px;
-    margin-bottom: 20px;
-    border-radius: 5px;
-}
-
 @media (max-width: 768px) {
     .review-card {
         flex-direction: column;
@@ -199,6 +196,22 @@ export default {
 
     .review-image {
         margin: 0 auto;
+    }
+
+    .section-title {
+        font-size: 20px;
+    }
+
+    .review-author {
+        font-size: 16px;
+    }
+
+    .review-text {
+        font-size: 14px;
+    }
+
+    .star-rating {
+        font-size: 18px;
     }
 }
 </style>

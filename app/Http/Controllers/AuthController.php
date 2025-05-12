@@ -1,15 +1,16 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\{Event, EventRegistration, Teacher, User};
+use App\Models\{Event, EventRegistration, Teacher, User, Review};
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\{Auth, Log, DB};
+use Illuminate\Support\Facades\{Auth, Log, DB, Storage};
 use Inertia\Inertia;
 
 class AuthController extends Controller
 {
     private const DASHBOARD_PATH = '/dashboard';
-    private const EVENTS_PATH = '/events';
+    private const PROFILE_PATH = '/profile';
     private const HOME_PATH = '/';
 
     public function login(Request $request)
@@ -18,11 +19,10 @@ class AuthController extends Controller
             $request->session()->regenerate();
             $user = Auth::user();
 
-            // Перенаправляем в зависимости от роли
             if ($user->role === 'admin') {
                 return redirect(self::DASHBOARD_PATH);
             } else {
-                return redirect(self::EVENTS_PATH);
+                return redirect(self::PROFILE_PATH);
             }
         }
         return back()->withErrors(['email' => 'Неверные учетные данные']);
@@ -51,11 +51,10 @@ class AuthController extends Controller
         $user = User::create($data);
         Auth::login($user);
 
-        // Перенаправляем в зависимости от роли
         if ($user->role === 'admin') {
             return redirect(self::DASHBOARD_PATH);
         } else {
-            return redirect(self::EVENTS_PATH);
+            return redirect(self::PROFILE_PATH);
         }
     }
 
@@ -315,6 +314,10 @@ class AuthController extends Controller
     public function showEventDetails($id)
     {
         $event = Event::with('teachers')->findOrFail($id);
+        $reviews = Review::with('user')
+            ->where('event_id', $id)
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         $availableSeats = $event->total_seats - $event->occupied_seats;
 
@@ -325,6 +328,7 @@ class AuthController extends Controller
                 'total_seats' => $event->total_seats,
                 'occupied_seats' => $event->occupied_seats,
                 'available_seats' => $availableSeats,
+                'reviews_count' => $reviews->count(),
             ]);
         }
 
@@ -349,6 +353,8 @@ class AuthController extends Controller
                 ]),
             ],
             'auth' => ['user' => Auth::user()],
+            'reviews' => $reviews,
+            'errors' => session('errors') ? session('errors')->getBag('default')->getMessages() : [],
         ]);
     }
 

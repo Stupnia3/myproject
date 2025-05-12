@@ -1,13 +1,12 @@
-<!-- resources/js/Pages/Register.vue -->
 <template>
     <div class="page">
         <main class="content">
-            <div class="register-container">
+            <div class="edit-container">
                 <div class="image-section">
                     <img src="/storage/images/EXPRESS_YOURSELF.jpg" alt="Express Yourself" class="image-placeholder" />
                 </div>
                 <div class="form-section">
-                    <h3 class="form-title">Регистрация</h3>
+                    <h3 class="form-title">Редактировать профиль</h3>
                     <form @submit.prevent="submit" class="form" enctype="multipart/form-data">
                         <div class="input-group">
                             <input
@@ -40,10 +39,9 @@
                                 type="file"
                                 class="hidden-file-input"
                                 accept="image/*"
-                                @change="handlePhotoChange"
+                                @change="form.photo = $event.target.files[0]"
                                 :class="{ 'error': errors.photo }"
                             />
-                            <img v-if="photoPreview" :src="photoPreview" alt="Photo Preview" class="photo-preview" />
                             <span v-if="form.photo" class="file-name">{{ form.photo.name }}</span>
                             <span v-if="errors.photo" class="error-text">{{ errors.photo }}</span>
                         </div>
@@ -52,7 +50,7 @@
                                 v-model="form.password"
                                 :type="showPassword ? 'text' : 'password'"
                                 class="input"
-                                placeholder="Пароль"
+                                placeholder="Новый пароль (оставьте пустым, чтобы не менять)"
                                 :class="{ 'error': errors.password }"
                             />
                             <span class="eye-icon" @click="showPassword = !showPassword">
@@ -75,10 +73,10 @@
                         </div>
                         <div class="buttons">
                             <button type="submit" class="btn primary" :disabled="form.processing">
-                                Зарегистрироваться
+                                Сохранить
                             </button>
-                            <button type="button" class="btn secondary" @click="$inertia.get('/login')">
-                                <Link href="/login">Есть аккаунт</Link>
+                            <button type="button" class="btn secondary" @click="$inertia.get(route('profile.show'))">
+                                Отмена
                             </button>
                         </div>
                     </form>
@@ -90,22 +88,26 @@
 
 <script>
 import { Link, useForm } from '@inertiajs/vue3';
-import PhoneInput from '../Components/PhoneInput.vue';
+import PhoneInput from '@/Components/PhoneInput.vue';
 
 export default {
     components: { Link, PhoneInput },
-    setup() {
+    props: {
+        errors: Object,
+        user: Object,
+    },
+    setup(props) {
         const form = useForm({
-            name: '',
-            email: '',
-            phone: '',
+            name: props.user.name,
+            email: props.user.email,
+            phone: props.user.phone || '',
             photo: null,
             password: '',
             password_confirmation: '',
         });
 
         function submit() {
-            form.post('/register', {
+            form.post(route('profile.update'), {
                 onSuccess: () => form.reset('password', 'password_confirmation', 'photo'),
                 forceFormData: true,
             });
@@ -117,21 +119,7 @@ export default {
         return {
             showPassword: false,
             showConfirmPassword: false,
-            photoPreview: null,
         };
-    },
-    props: {
-        errors: Object,
-    },
-    methods: {
-        handlePhotoChange(event) {
-            this.form.photo = event.target.files[0];
-            if (this.form.photo) {
-                this.photoPreview = URL.createObjectURL(this.form.photo);
-            } else {
-                this.photoPreview = null;
-            }
-        },
     },
 };
 </script>
@@ -151,7 +139,7 @@ export default {
     padding: 20px;
 }
 
-.register-container {
+.edit-container {
     width: 900px;
     background: #f5f5f5;
     border-radius: 20px;
@@ -261,15 +249,6 @@ export default {
 
 .hidden-file-input {
     display: none;
-}
-
-.photo-preview {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin-top: 10px;
-    border: 2px solid #1e40af;
 }
 
 .file-name {

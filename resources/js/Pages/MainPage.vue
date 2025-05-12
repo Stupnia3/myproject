@@ -8,10 +8,10 @@
 </template>
 
 <script>
-import AboutSection from '../components/AboutSection.vue';
-import ReviewsSection from '../components/ReviewsSection.vue';
-import ThoughtsSection from '../components/ThoughtsSection.vue';
-import TestSection from '../components/TestSection.vue';
+import AboutSection from '../Components/AboutSection.vue';
+import ReviewsSection from '../Components/ReviewsSection.vue';
+import ThoughtsSection from '../Components/ThoughtsSection.vue';
+import TestSection from '../Components/TestSection.vue';
 
 export default {
     components: {
@@ -21,8 +21,14 @@ export default {
         TestSection,
     },
     props: {
-        reviews: Array, // Теперь передаём массив всех отзывов
+        reviews: {
+            type: Array,
+            default: () => [],
+        },
+        title: {
+            type: String,
+            default: 'Главная',
+        },
     },
 };
 </script>
-

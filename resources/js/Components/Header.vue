@@ -3,23 +3,10 @@
         <div class="logo"><Link href="/" class="nav-item"><img src="/storage/images/art-therapy-logo.svg" alt="Logo" /></Link></div>
         <ul class="nav-links">
             <li><Link href="/about" class="nav-item">о нас</Link></li>
-            <li>
-                <Link
-                    v-if="isAuthenticated"
-                    :href="route('reviews.create')"
-                    class="nav-item"
-                >
-                    отзывы
-                </Link>
-                <Link
-                    v-else
-                    href="/login"
-                    class="nav-item"
-                >
-                    отзывы
-                </Link>
-            </li>
             <li><Link href="/events" class="nav-item">мероприятия</Link></li>
+            <li v-if="isAuthenticated">
+                <Link :href="route('profile.show')" class="nav-item">личный кабинет</Link>
+            </li>
             <li v-if="isAuthenticated && isAdmin">
                 <Link href="/dashboard" class="nav-item">панель администратора</Link>
             </li>

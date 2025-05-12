@@ -3,36 +3,62 @@
 namespace App\Http\Controllers;
 
 use App\Models\Review;
+use App\Models\EventRegistration;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Log;
 
 class ReviewController extends Controller
 {
-    public function create()
-    {
-        return Inertia::render('AddReview', [
-            'auth' => [
-                'user' => auth()->user(),
-            ],
-            'csrf_token' => csrf_token(),
-        ]);
-    }
-
     public function store(Request $request)
     {
+        Log::info('ReviewController::store called', ['request' => $request->all()]);
+
         $request->validate([
+            'event_id' => 'required|exists:events,id',
             'text' => 'required|string|max:1000',
             'rating' => 'required|integer|between:1,5',
         ]);
 
-        Review::create([
+        $hasRegistration = EventRegistration::where('user_id', auth()->id())
+            ->where('event_id', $request->event_id)
+            ->where('status', 'confirmed')
+            ->exists();
+
+        if (!$hasRegistration) {
+            Log::warning('User not registered or not confirmed for event', [
+                'user_id' => auth()->id(),
+                'event_id' => $request->event_id,
+            ]);
+            return Redirect::back()->withErrors(['message' => 'Вы можете оставить отзыв только для мероприятий, на которые зарегистрированы и подтверждены.']);
+        }
+
+        $review = Review::create([
             'user_id' => auth()->id(),
+            'event_id' => $request->event_id,
             'text' => $request->text,
-            'rating' => $request->rating,
-            'image' => auth()->user()->profile_photo_path ?? '/storage/images/avatardefault.png',
+            'rating' => $review->rating,
         ]);
 
-        // Исправляем имя маршрута на 'reviews.create'
-        return redirect()->route('reviews.create')->with('message', 'Отзыв успешно добавлен!');
+        Log::info('Review created', ['review_id' => $review->id]);
+
+        return Redirect::back()->with('message', 'Отзыв успешно добавлен!');
+    }
+
+    public function index($eventId)
+    {
+        Log::info('ReviewController::index called', ['event_id' => $eventId]);
+
+        $reviews = Review::with('user')
+            ->where('event_id', $eventId)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        Log::info('Reviews fetched for event', [
+            'event_id' => $eventId,
+            'count' => $reviews->count(),
+        ]);
+
+        return response()->json($reviews);
     }
 }
